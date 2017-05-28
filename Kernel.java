@@ -49,6 +49,9 @@ public class Kernel
    private static Scheduler scheduler;
    private static Disk disk;
    private static Cache cache;
+   private static Directory directory;
+   private static FileSystem fileSystem;
+   private static FileTable fileTable;
 
    // Synchronized Queues
    private static SyncQueue waitQueue;  // for threads to wait for their child
@@ -64,6 +67,8 @@ public class Kernel
    // The heart of Kernel
    public static int interrupt( int irq, int cmd, int param, Object args ) {
       TCB myTcb;
+
+
       switch( irq ) {
          case INTERRUPT_SOFTWARE: // System calls
             switch( cmd ) { 
@@ -75,6 +80,12 @@ public class Kernel
                   // instantiate and start a disk
                   disk = new Disk( 1000 );
                   disk.start( );
+
+                  //TODO: You need to add instance of file table to kernel, in case BOOT right after new Disk()
+                   //ADDED FOR PR5
+                  directory = new Directory(64);
+                  fileSystem = new FileSystem(1000);
+                  fileTable = new FileTable(directory);
 
                   // instantiate a cache memory
                   cache = new Cache( disk.blockSize, 10 );
@@ -180,7 +191,7 @@ public class Kernel
                   if((myTcb = scheduler.getMyTcb()) != null)
                   {
                      String[] s = (String[])args;
-                     FileTableEntry ent = fs.open(s[0], s[1]);
+                     FileTableEntry ent = fileSystem.open(s[0], s[1]);
                      int fd = myTcb.getFd(ent);
                      return fd;
                   }
@@ -189,6 +200,11 @@ public class Kernel
                      return ERROR;
                   }
                   //return OK;
+                  //TODO: : Modify the EXIT case in Kernel.java, which is much easier to modify.
+                  //If processes are running, the Loader.java never gets control. So, you don't have
+                  //to think about such a special case in that a shutdown is requested while some processes
+                  //are running. Just simply modify the EXIT case statement in Kernel.java
+                  // to reflect all Disk.java contents to the Disk file.
                case CLOSE:   // to be implemented in project
                   return OK;
                case SIZE:    // to be implemented in project
