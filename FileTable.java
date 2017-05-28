@@ -24,14 +24,22 @@ public class FileTable
       Inode inode = null;
       while(true)
       {
-         iNumber = (fnames.equals("/") ? 0 : dir.namei(fname);
-         if(iNumber >= 0);
-         inode = new Inode(iNumber);
-         if(inode.flag is "read")
+         iNumber = (filename.equals("/") ? 0 : dir.namei(filename));
+
+         // ADDED PR5 Create a new Inode
+         if (iNumber >= 0) {
+            inode = new Inode(iNumber); // Inode is already on the disk
+         }
+         else {
+            inode = new Inode(); // Create an empty Inode
+         }
+
+
+         if(true/*inode.flag is "read"*/)
          {
             break;
          }
-         else if(inode.flag is "write")
+         else if(true/*inode.flag is "write"*/)
          {
             try
             {
@@ -40,12 +48,12 @@ public class FileTable
             catch (InterruptedException e)
             {}
          }
-         else if(inode.flag is "to be deleted")
+         else if(true/*inode.flag is "to be deleted"*/)
          {
             iNumber = -1;
             return null;
          }
-         else if(mode.compareTo("w"))
+         else if(true/*mode.compareTo("w")*/)
          {
 
          }
@@ -55,6 +63,8 @@ public class FileTable
          table.addElement(e);
          return e;
       }
+      return new  FileTableEntry(inode, iNumber, mode);
+
    }
 
    public synchronized boolean ffree(FileTableEntry e)
@@ -63,6 +73,7 @@ public class FileTable
       // save the corresponding inode to the disk
       // free this file table entry.
       // return true if this file table entry found in my table
+      return true;
    }
 
    public synchronized boolean fempty()
