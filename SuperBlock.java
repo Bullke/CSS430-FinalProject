@@ -16,11 +16,11 @@ public class SuperBlock
 
 	public SuperBlock(int diskSize)
 	{
-		byte[] SuperBlock - new byte[Disk.blockSize];
-		Sys.Lib.rawread(0, SuperBlock);
-		totalBlocks = SysLib.bytes2int(SuperBlock, 0);
-		totalInodes = SysLib.bytes2int(SuperBlock, 4);
-		freeList = SysLib.bytes2int(SuperBlock, 8);
+		byte[] superBlock = new byte[Disk.blockSize];
+		SysLib.rawread(0, superBlock);
+		totalBlocks = SysLib.bytes2int(superBlock, 0);
+		totalInodes = SysLib.bytes2int(superBlock, 4);
+		freeList = SysLib.bytes2int(superBlock, 8);
 		if((totalBlocks == diskSize) && (totalInodes > 0) && (freeList >= 2))
 		{
 			// Disk contents are valid
@@ -30,16 +30,32 @@ public class SuperBlock
 		{
 			// Need to format disk
 			totalBlocks = diskSize;
-			format(MAX_INODES);
+			FileSystem.format(MAX_INODES);
 		}
 	}
+
 	public void sync()
 	{
 		// Write back totalBlocks, inodeBlocks, and freeList to disk
 	}
-	public void getFreeBlock()
+
+	public int getFreeBlock()
 	{
-		// Dequeue the top block from the fre list
+	    int freeBlock = freeList;
+
+        if(freeBlock != -1) {
+            byte[] blockData = new byte[Disk.blockSize];
+            SysLib.rawread(freeBlock, blockData);
+
+            // next freeBlock
+            this.freeList = SysLib.bytes2int(blockData, 0);
+
+            // zero out first int in the block
+            SysLib.int2bytes(0, blockData, 0);
+            SysLib.rawwrite(freeBlock, blockData);
+        }
+
+		return freeBlock;
 	}
 	public void returnBlock(int blockNumber)
 	{
