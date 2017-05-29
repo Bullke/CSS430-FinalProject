@@ -85,15 +85,26 @@ public class FileSystem
             int chunksize = Math.min(toRead, Disk.blockSize);
             System.arraycopy(blockData, 0, buffer, destPosition, chunksize);
 
-            toRead -= Disk.blockSize;
+            toRead -= chunksize;
             currentDirect++;
             destPosition += chunksize;
         }
 
-        // 4. read data from indirects
-        
+        assert (toRead == 0 && fileTableEnt.inode.indirect == -1) || (toRead > 0 && fileTableEnt.inode.indirect != -1);
 
-		return -1;
+        // 4. read data from indirects
+        short nextIndirect = fileTableEnt.inode.indirect;
+        while (toRead > 0 && nextIndirect != -1) {
+            SysLib.rawread(nextIndirect, blockData);
+            int chunksize = Math.min(toRead, Disk.blockSize-2);
+            System.arraycopy(blockData, 2, buffer, destPosition, chunksize);
+            nextIndirect = SysLib.bytes2short(blockData, 0);
+
+            toRead -= chunksize;
+            destPosition += chunksize;
+        }
+        
+		return destPosition;
 	}
 
 
