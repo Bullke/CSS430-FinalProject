@@ -20,7 +20,7 @@ public class FileSystem
 		filetable = new FileTableEntry(directory);
 
 		FileTableEntry dirEnt = open("/", "r");
-		int dirSize = Directory::fsize(dirEnt);
+		int dirSize = directory.fsize(dirEnt);
 		if(dirSize > 0)
 		{
 			byte[] dirData = new byte[dirSize];
