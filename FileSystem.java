@@ -67,6 +67,32 @@ public class FileSystem
 
 	public int read(FileTableEntry fileTableEnt, byte[] buffer) {
 
+	    // 1. determine how many bytes to read
+        int toRead = fileTableEnt.inode.length;
+
+        // 2. allocate buffer for data
+        buffer = new byte[toRead];
+
+        // 3. read data from directs
+        int currentDirect = 0;
+        int destPosition = 0;
+
+        byte[] blockData = new byte[Disk.blockSize];
+        while (toRead > 0 && currentDirect < fileTableEnt.inode.direct.length) {
+            assert fileTableEnt.inode.direct[currentDirect] != -1;
+
+            SysLib.rawread(fileTableEnt.inode.direct[currentDirect], blockData);
+            int chunksize = Math.min(toRead, Disk.blockSize);
+            System.arraycopy(blockData, 0, buffer, destPosition, chunksize);
+
+            toRead -= Disk.blockSize;
+            currentDirect++;
+            destPosition += chunksize;
+        }
+
+        // 4. read data from indirects
+        
+
 		return -1;
 	}
 
