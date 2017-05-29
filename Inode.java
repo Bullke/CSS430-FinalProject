@@ -48,7 +48,7 @@ public class Inode
     {
         // retrieving inode from disk
  	   //int blockNumber = (1 + (iNumber / 16));
-        int blockNumber = getIndexBlockNumber(iNumber) + 1;
+        int blockNumber = findTargetBlock(iNumber) + 1;
  	   byte[] data = new byte[Disk.blockSize];
  	   SysLib.rawread(blockNumber, data); // read a block of data from disk
  	   int offset = ((iNumber % 16) * 32);
@@ -73,7 +73,7 @@ public class Inode
     {
         // save to disk as the i-th inode
         //int blockNumber = iNumber % 16;
-        int blockNumber = getIndexBlockNumber(iNumber);
+        int blockNumber = findTargetBlock(iNumber);
         byte[] data = new byte[Disk.blockSize];
 
         int offset = ((iNumber % 16) * 32);
@@ -96,57 +96,34 @@ public class Inode
     }
 
     /*
-    Returns the block number of the given Inode
+    Returns the block number
      */
-    public short getIndexBlockNumber(short iNumber)
+    public short getIndexBlockNumber()
     {
-        if (iNumber >= 0 ) {
-            return (short) (iNumber % 16);
-        }
-        return -1;
+        return indirect;
     }
     /*
-    Sets the index of block to read
+    Returns true if indirect is set to indexBlockNumber succesfully
      */
     public Boolean setIndexBlock(short indexBlockNumber)
     {
-        return false;
+       if (indirect == -1) {
+           indirect = indexBlockNumber;
+           return true;
+       }
+       return false;
     }
 
     /*
     Finds the block to read/write
      */
-    public short findTargetBlock(int offset)
+//    public short findTargetBlock(int offset)
+    public short findTargetBlock(int iNumber)
     {
+        if (iNumber >= 0 ) {
+            return (short) (iNumber % 16);
+        }
+
         return -1;
     }
-
-    /* 2 methods From cache
-    Writes back the cache contents to the disk. Resets the dirty bit.
-        */
-//    private boolean writeBack( int cacheEntryId ) {
-//        if (pageTable[cacheEntryId].frame != INVALID && pageTable[cacheEntryId].dirty == 1) {
-//            int writeResult = SysLib.rawwrite(pageTable[cacheEntryId].frame, cache.elementAt(cacheEntryId));
-//            if (writeResult != Kernel.OK) {
-//                SysLib.cout(String.format("Failed to write block %d blockId to disk\n", pageTable[cacheEntryId].frame));
-//                return false;
-//            }
-//            pageTable[cacheEntryId].dirty = 0;
-//        }
-//        return true;
-//    }
-//
-//    /*
-//    Writes the cache contents to disk.
-//    If setReferenceBit is true, resets the reference bit to true.
-//     */
-//    private boolean writeToCache( int blockId, byte buffer[], int cachePosition, boolean setDirtyBit ) {
-//        System.arraycopy(buffer, 0, cache.get(cachePosition), 0, blockSize);
-//        pageTable[cachePosition].frame = blockId;
-//        pageTable[cachePosition].reference = 1;
-//        if ( setDirtyBit ) {
-//            pageTable[cachePosition].dirty = 1;
-//        }
-//        return true;
-//    }
 }
