@@ -31,11 +31,6 @@ public class Inode
     }
 
     /*
-    If a new file is created, it is given a new inode. In this case, you'll just instantiate it from
-    its default constructor where all direct pointers and the indirect pointer are null.
-    The contents will be later updated as the file is written.
-
-    An existing file has already had an inode. It is in the disk.
      When such an existing file is opened, you should find the corresponding inode from the disk.
      First, refer to the directory in order to find the inode number. From this inode number, you can calculate
      which disk block contains the inode. Read this disk block and get this inode information.
@@ -43,6 +38,7 @@ public class Inode
       reinitialize it with the inode information retrieved from the disk.
 
       ADDED: FileTable decides whether to create an empty Inode or it already exists
+      Retrieves inode with the corresponding iNumber from disk.
      */
     public Inode(short iNumber)
     {
@@ -52,16 +48,15 @@ public class Inode
  	   byte[] data = new byte[Disk.blockSize];
  	   SysLib.rawread(blockNumber, data); // read a block of data from disk
  	   int offset = ((iNumber % 16) * 32);
+
  	   length = SysLib.bytes2int(data, offset);
- 	   offset += 4;
- 	   count = SysLib.bytes2short(data, offset);
- 	   offset += 2;
- 	   flag = SysLib.bytes2short(data, offset);
- 	   offset += 2;
- 	   for (int i = 0; i <= 10; i+=1, offset +=2) {
- 	       direct[i] = SysLib.bytes2short(data, offset);
+ 	   count = SysLib.bytes2short(data, offset + 4);
+ 	   flag = SysLib.bytes2short(data, offset + 6);
+
+ 	   for (int i = 0; i < directSize; i++) {
+ 	       direct[i] = SysLib.bytes2short(data, (offset + 8 + 2 * i));
        }
-       indirect = SysLib.bytes2short(data, offset);
+       indirect = SysLib.bytes2short(data, offset + 30);
     }
 
 
@@ -75,16 +70,15 @@ public class Inode
         //int blockNumber = iNumber % 16;
         int blockNumber = findTargetBlock(iNumber);
         byte[] data = new byte[Disk.blockSize];
-
+        SysLib.rawread(blockNumber, data);
         int offset = ((iNumber % 16) * 32);
+
        SysLib.int2bytes(length, data, offset);
-       offset += 4;
-       SysLib.short2bytes(count, data, offset);
-       offset += 2;
-       SysLib.short2bytes(flag, data, offset);
-       offset += 2;
-       for (int i = 0; i < 11; i+=1, offset +=2) {
-             SysLib.short2bytes(direct[i], data, offset);
+       SysLib.short2bytes(count, data, offset+ 4);
+       SysLib.short2bytes(flag, data, offset + 6);
+
+       for (int i = 0; i < directSize; i++) {
+             SysLib.short2bytes(direct[i], data, (offset+ 8 + 2 * i));
         }
         SysLib.short2bytes(indirect, data, offset);
 

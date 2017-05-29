@@ -16,8 +16,8 @@ public class FileSystem
 	public FileSystem(int diskBlocks)
 	{
 		superblock = new SuperBlock(diskBlocks);
-		filetable = new Directory(superblock.totalInodes);
-		filetable = new FileTableEntry(directory);
+		directory = new Directory(superblock.totalInodes);
+		filetable = new FileTable(directory);
 
 		FileTableEntry dirEnt = open("/", "r");
 		int dirSize = directory.fsize(dirEnt);
@@ -29,14 +29,7 @@ public class FileSystem
 		}
 		close(dirEnt);
 	}
-	//int SysLib.format( int files );
-	//int fd = SysLib.open( String fileName, String mode );
-	//int read( int fd, byte buffer[] );
-	//int write( int fd, byte buffer[] );
-	//int seek( int fd, int offset, int whence );
-	//int close( int fd );
-	//int delete( String fileName );
-	//int fsize( int fd );
+
 	public FileTableEntry open(String filename, String mode)
 	{
 		FileTableEntry ftEnt = filetable.falloc(filename, mode);
@@ -46,23 +39,61 @@ public class FileSystem
 			{
 				return null;
 			}
+
 		}
 		return ftEnt;
 	}
-	public int read(FileTableEntry fileTableEnt, byte[] buffer)
-	{
+
+	//TODO: You also need a way to make your FileSystem sync itself.
+	public void sync(){
+
+
+    }
+
+// STATIC??????
+    public static boolean  format(int files) {
+	    return false;
+
+    }
+
+
+    // Closes the file
+    public Boolean close (FileTableEntry ftEntry) {
+        return filetable.ffree(ftEntry);
+    }
+
+
+
+
+	public int read(FileTableEntry fileTableEnt, byte[] buffer) {
+
 		return -1;
 	}
-	public int write(FileTableEntry fileTableEnt, byte[] buffer)
-	{
-		return -1;
+
+
+	public int write(FileTableEntry fileTableEnt, byte[] buffer) {
+
+
+	    return -1;
 	}
-	public int fsize(FileTableEntry fileTableEnt)
-	{
-		return -1;
+
+
+	public int fsize(FileTableEntry fileTableEnt) {
+
+
+	    return -1;
 	}
-	public Boolean deallocAllBlocks(FileTableEntry inputTable)
-	{
+	public Boolean deallocAllBlocks(FileTableEntry inputTable) {
+
 		return false;
+	}
+
+	public Boolean delete(String filename ) {
+	    return false;
+    }
+
+
+	public int seek(FileTableEntry ftEnt, int offset, int whence) { // not seekArgs, but ints or shorts
+		return 0;
 	}
 }
