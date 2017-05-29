@@ -20,7 +20,7 @@ public class FileSystem
 		filetable = new FileTable(directory);
 
 		FileTableEntry dirEnt = open("/", "r");
-		int dirSize = directory.fsize(dirEnt);
+		int dirSize = this.fsize(dirEnt);
 		if(dirSize > 0)
 		{
 			byte[] dirData = new byte[dirSize];
