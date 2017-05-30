@@ -65,7 +65,13 @@ public class FileSystem
 
 
 
+    /*
+    Returns the number of bytes that have been read or -1 upon an error
+     */
 	public int read(FileTableEntry fileTableEnt, byte[] buffer) {
+	    if (fileTableEnt.mode.equals('w') || fileTableEnt.mode.equals('a')) {
+	        return -1;
+        }
 
 	    // 1. determine how many bytes to read
         int toRead = fileTableEnt.inode.length;
@@ -103,22 +109,106 @@ public class FileSystem
             toRead -= chunksize;
             destPosition += chunksize;
         }
-        
+
 		return destPosition;
 	}
 
 
+    /*
+    Returns the number of bytes that have been written from buffer to disk or -1 upon an error
+    Can overwrite or append data
+    TODO: write past the end of file?
+     */
 	public int write(FileTableEntry fileTableEnt, byte[] buffer) {
+        if (fileTableEnt.mode.equals('r') ) {
+            return -1;
+        }
+
+        // 2 cases: file dne or its len = 0
+//        if (fileTableEnt.inode.length==0){
+//
+//        }
 
 
-	    return -1;
+
+        int toWrite = buffer.length;
+        int destPosition = 0;
+	    int currentPosition = 0;
+	    int nextFreeBlock;
+        byte[] blockData = new byte[Disk.blockSize];
+
+
+        if (fileTableEnt.mode.equals('a')) {
+            currentPosition = fileTableEnt.inode.length;
+            while (toWrite > 0) {
+                nextFreeBlock = superblock.getFreeBlock();
+                if (nextFreeBlock == -1) {
+                    return -1;
+                }
+                int chunksize = Math.min(toWrite, Disk.blockSize);
+                System.arraycopy(buffer, 0, blockData, destPosition, chunksize);
+                SysLib.rawwrite(nextFreeBlock, blockData);
+
+                toWrite -= chunksize;
+                currentPosition++;
+                destPosition += chunksize;
+            }
+            fileTableEnt.inode.length = buffer.length + destPosition;
+        }
+
+        else {
+            nextFreeBlock = 0;
+            int directBlockId = 0;
+            // write directs
+            while (toWrite > 0 && directBlockId < fileTableEnt.inode.direct.length ) {
+
+                short directBlock = fileTableEnt.inode.direct[directBlockId];
+                if (directBlockId == -1) {
+                    directBlock = (short) superblock.getFreeBlock(); // new file size > old
+                    if (directBlock == -1) {
+                        return -1; // no free space on disk
+                    }
+                    fileTableEnt.inode.direct[directBlockId] = directBlock;
+                }
+
+                int chunksize = Math.min(toWrite, Disk.blockSize);
+                if (chunksize < Disk.blockSize) {
+                    java.util.Arrays.fill(blockData, (byte) 0);
+                }
+
+                System.arraycopy(buffer, currentPosition, blockData, 0, chunksize);
+                SysLib.rawwrite(directBlock, blockData);
+
+                toWrite -= chunksize;
+                currentPosition+=chunksize;
+                //destPosition += chunksize;
+                directBlockId++;
+            }
+
+            // do we need to write further?
+            if (toWrite <= 0 ){
+                short directBlock = fileTableEnt.inode.direct[directBlockId];
+                for (; directBlockId < fileTableEnt.inode.direct.length; directBlockId++) {
+                     if (fileTableEnt.inode.direct[directBlockId] != -1) {
+                         superblock.returnBlock(fileTableEnt.inode.direct[directBlockId]);
+                         fileTableEnt.inode.direct[directBlockId] = -1;
+                     }
+                }
+            }
+
+
+            fileTableEnt.inode.length = buffer.length;
+        }
+        fileTableEnt.inode.count++;
+        fileTableEnt.inode.flag = 1;
+        return buffer.length;
 	}
 
 
 	public int fsize(FileTableEntry fileTableEnt) {
-
-
-	    return -1;
+	    assert (fileTableEnt != null);
+	    return fileTableEnt.inode.length;
+	    //return -1;
 	}
 	public Boolean deallocAllBlocks(FileTableEntry inputTable) {
 
