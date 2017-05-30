@@ -154,9 +154,9 @@ public class FileSystem
                 destPosition += chunksize;
             }
             fileTableEnt.inode.length = buffer.length + destPosition;
-        }
 
-        else {
+        } else {  // overwrite
+
             nextFreeBlock = 0;
             int directBlockId = 0;
             // write directs
@@ -187,6 +187,7 @@ public class FileSystem
 
             // do we need to write further?
             if (toWrite <= 0 ){
+                // free directs
                 short directBlock = fileTableEnt.inode.direct[directBlockId];
                 for (; directBlockId < fileTableEnt.inode.direct.length; directBlockId++) {
                      if (fileTableEnt.inode.direct[directBlockId] != -1) {
@@ -194,7 +195,53 @@ public class FileSystem
                          fileTableEnt.inode.direct[directBlockId] = -1;
                      }
                 }
+                // free indirects
+                freeIndirectBlocks(fileTableEnt.inode.indirect);
+            } else {
+                // write indirects
+                short oldIndirectChainHead = fileTableEnt.inode.indirect;
+                // make an array of indirect block ids to which we will write data
+                int numBlocks = (Disk.blockSize - 2);
+
+                // array of free blocks to use as next
+                short[] nextIndirectBlocks = new short[(toWrite - 1) / numBlocks + 1];
+                Arrays.fill(nextIndirectBlocks, (short)-1);
+
+                short indirectBlock = (short)superblock.getFreeBlock();
+                if (indirectBlock == -1) {
+                    return -1;
+                }
+                fileTableEnt.inode.indirect = indirectBlock;
+
+
+                for ( int i = 0; i < nextIndirectBlocks.length - 1; i++) {
+                    nextIndirectBlocks[i] = (short) superblock.getFreeBlock();
+                    if (nextIndirectBlocks[i] == -1) {
+                        freeBlocks(nextIndirectBlocks);
+                        return -1;
+                    }
+                }
+
+                int iteration = 0; // to know what next indirect block's id will be
+                while (toWrite > 0) {
+
+                    assert indirectBlock != -1;
+
+                    int chunksize = Math.min(toWrite, Disk.blockSize-2);
+
+                    SysLib.short2bytes(nextIndirectBlocks[iteration], blockData, 0);
+                    System.arraycopy(buffer, currentPosition, blockData, 2, chunksize);
+                    SysLib.rawwrite(indirectBlock, blockData);
+
+                    toWrite -= chunksize;
+                    iteration++;
+                    indirectBlock = nextIndirectBlocks[iteration];
+                }
+
+                freeIndirectBlocks(oldIndirectChainHead);
             }
+
+
 
 
             fileTableEnt.inode.length = buffer.length;
@@ -204,6 +251,20 @@ public class FileSystem
         return buffer.length;
 	}
 
+    // deletes all the chain of indirect blocks
+	void freeIndirectBlocks(short blockId) {
+
+    }
+
+
+    //delete blocks
+    private void freeBlocks(short[] blocks) {
+	    for (short block : blocks){
+	        if ( block != -1) {
+                superblock.returnBlock(block);
+            }
+        }
+    }
 
 	public int fsize(FileTableEntry fileTableEnt) {
 	    assert (fileTableEnt != null);
