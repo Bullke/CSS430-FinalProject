@@ -1,3 +1,5 @@
+import sun.net.ftp.FtpClient;
+
 import java.util.*;
 
 public class FileSystem
@@ -139,21 +141,7 @@ public class FileSystem
 
 
         if (fileTableEnt.mode.equals('a')) {
-            currentPosition = fileTableEnt.inode.length;
-            while (toWrite > 0) {
-                nextFreeBlock = superblock.getFreeBlock();
-                if (nextFreeBlock == -1) {
-                    return -1;
-                }
-                int chunksize = Math.min(toWrite, Disk.blockSize);
-                System.arraycopy(buffer, 0, blockData, destPosition, chunksize);
-                SysLib.rawwrite(nextFreeBlock, blockData);
-
-                toWrite -= chunksize;
-                currentPosition++;
-                destPosition += chunksize;
-            }
-            fileTableEnt.inode.length = buffer.length + destPosition;
+            append(fileTableEnt, buffer);
 
         } else {  // overwrite
 
@@ -197,6 +185,7 @@ public class FileSystem
                 }
                 // free indirects
                 freeIndirectBlocks(fileTableEnt.inode.indirect);
+                fileTableEnt.inode.indirect = -1;
             } else {
                 // write indirects
                 short oldIndirectChainHead = fileTableEnt.inode.indirect;
@@ -211,7 +200,7 @@ public class FileSystem
                 if (indirectBlock == -1) {
                     return -1;
                 }
-                fileTableEnt.inode.indirect = indirectBlock;
+
 
 
                 for ( int i = 0; i < nextIndirectBlocks.length - 1; i++) {
@@ -229,6 +218,10 @@ public class FileSystem
 
                     int chunksize = Math.min(toWrite, Disk.blockSize-2);
 
+                    if (chunksize < Disk.blockSize - 2) {
+                        java.util.Arrays.fill(blockData, (byte) 0);
+                    }
+
                     SysLib.short2bytes(nextIndirectBlocks[iteration], blockData, 0);
                     System.arraycopy(buffer, currentPosition, blockData, 2, chunksize);
                     SysLib.rawwrite(indirectBlock, blockData);
@@ -237,7 +230,7 @@ public class FileSystem
                     iteration++;
                     indirectBlock = nextIndirectBlocks[iteration];
                 }
-
+                fileTableEnt.inode.indirect = indirectBlock;
                 freeIndirectBlocks(oldIndirectChainHead);
             }
 
@@ -251,9 +244,160 @@ public class FileSystem
         return buffer.length;
 	}
 
+    private int append(FileTableEntry fileTableEnt, byte[] buffer) {
+        int toWrite = buffer.length;
+        int lastOccupiedBlock = fileTableEnt.inode.length / Disk.blockSize;
+        int freeSpaceOffsetInLastOccupiedBlock = -1;
+        int lastOccupiedIndirectBlock = -1;
+        if (lastOccupiedBlock <= fileTableEnt.inode.direct.length) {
+            freeSpaceOffsetInLastOccupiedBlock = fileTableEnt.inode.length % Disk.blockSize;
+        } else {
+            int bytesInIndirectBlocks = fileTableEnt.inode.direct.length - Disk.blockSize * fileTableEnt.inode.direct.length;
+            lastOccupiedIndirectBlock = bytesInIndirectBlocks / (Disk.blockSize - 2);
+            freeSpaceOffsetInLastOccupiedBlock = bytesInIndirectBlocks % (Disk.blockSize - 2);
+        }
+
+        byte[] blockData = new byte[Disk.blockSize];
+        int chunksize;
+
+        // case: append to last block which has free space
+
+        if (lastOccupiedIndirectBlock == -1) {
+            return appendStartingFromDirectBlock(fileTableEnt, buffer, lastOccupiedBlock, freeSpaceOffsetInLastOccupiedBlock);
+        } else {
+            return appendStartingFromIndirectBlock(fileTableEnt, buffer, lastOccupiedIndirectBlock, freeSpaceOffsetInLastOccupiedBlock);
+        }
+
+    }
+
+    int appendStartingFromDirectBlock(FileTableEntry fileTableEnt, byte[] buffer, int lastOccupiedBlock, int offset) {
+	    byte[] blockData = new byte[Disk.blockSize];
+        int chunksize = Disk.blockSize - offset;
+        int toWrite = buffer.length;
+        int srcPosition = 0;
+
+        // fill the last block
+        if (offset > 0) {
+            SysLib.rawread(fileTableEnt.inode.direct[lastOccupiedBlock], blockData);
+            System.arraycopy(buffer, srcPosition, blockData, offset, chunksize);
+            SysLib.rawwrite(fileTableEnt.inode.direct[lastOccupiedBlock], blockData);
+            srcPosition += chunksize;
+            lastOccupiedBlock++;
+            toWrite -= chunksize;
+        }
+
+        for (; lastOccupiedBlock < fileTableEnt.inode.direct.length; lastOccupiedBlock++) {
+            if (toWrite <= 0) {
+                break;
+            }
+            short nextFreeBlock = (short) superblock.getFreeBlock();
+            if (nextFreeBlock == -1) {
+                return -1;
+            }
+            fileTableEnt.inode.direct[lastOccupiedBlock] = nextFreeBlock;
+            chunksize = Math.min(toWrite, Disk.blockSize);
+            Arrays.fill(blockData, (byte) 0);
+            System.arraycopy(buffer, srcPosition, blockData, 0, chunksize);
+            SysLib.rawwrite(fileTableEnt.inode.direct[lastOccupiedBlock], blockData);
+            srcPosition += chunksize;
+            toWrite -= chunksize;
+        }
+
+        if (toWrite > 0) {
+
+            byte[] remainingBuffer = new byte[toWrite];
+            System.arraycopy(buffer, srcPosition, remainingBuffer, 0, toWrite);
+            appendStartingFromIndirectBlock(fileTableEnt,remainingBuffer, -1,0 );
+        }
+
+        return 0;
+    }
+
+    /**
+     *  appendStartingFromIndirectBlock(fileTableEnt, buffer, -1, x) - inode.indirect is not set
+     *  appendStartingFromIndirectBlock(fileTableEnt, buffer, 0, x)  - inode.indirect is set, and that block is not full
+     *  appendStartingFromIndirectBlock(fileTableEnt, buffer, 1, x)  - regular case
+     *
+     */
+    int appendStartingFromIndirectBlock(FileTableEntry fileTableEnt, byte[] buffer, int lastOccupiedBlock, int offset) {
+        byte[] blockData = new byte[Disk.blockSize];
+        int chunksize = Disk.blockSize - 2 - offset;
+        int toWrite = buffer.length;
+        int srcPosition = 0;
+        short nextIndirectIdx = -1;
+
+        if (lastOccupiedBlock == -1) {
+            nextIndirectIdx  = (short)superblock.getFreeBlock();
+            if (nextIndirectIdx == -1) {
+                return -1;
+            }
+            fileTableEnt.inode.indirect = nextIndirectIdx;
+        } else {
+
+            // find the block to fill
+            nextIndirectIdx = fileTableEnt.inode.indirect;
+            for (int i = 0; i < lastOccupiedBlock; i++) {
+                SysLib.rawread(nextIndirectIdx, blockData);
+                nextIndirectIdx = SysLib.bytes2short(blockData, 0);
+            }
+
+            // fill the last block
+            if (offset > 0) {
+                SysLib.rawread(nextIndirectIdx, blockData);
+                System.arraycopy(buffer, srcPosition, blockData, offset + 2, chunksize);
+
+                srcPosition += chunksize;
+                toWrite -= chunksize;
+
+                short lastIndirect = nextIndirectIdx;
+                nextIndirectIdx = (short) superblock.getFreeBlock();
+                if (toWrite > 0 && nextIndirectIdx != -1) {
+                    SysLib.short2bytes(nextIndirectIdx, blockData, 0);
+                }
+                SysLib.rawwrite(lastIndirect, blockData);
+            }
+        }
+
+        short currentBlock = nextIndirectIdx;
+
+        while (toWrite > 0) {
+
+            assert currentBlock != -1;
+
+            chunksize = Math.min(toWrite, Disk.blockSize-2);
+            if (chunksize < Disk.blockSize - 2) {
+                java.util.Arrays.fill(blockData, (byte) 0);
+            }
+
+            nextIndirectIdx = (short) superblock.getFreeBlock();
+            if (nextIndirectIdx == -1) {
+                return -1;
+            }
+
+            SysLib.short2bytes(nextIndirectIdx, blockData, 0);
+            System.arraycopy(buffer, srcPosition, blockData, 2, chunksize);
+            SysLib.rawwrite(currentBlock, blockData);
+
+            toWrite -= chunksize;
+
+            currentBlock = nextIndirectIdx;
+        }
+
+        return srcPosition;
+    }
+
     // deletes all the chain of indirect blocks
 	void freeIndirectBlocks(short blockId) {
+	    byte[] blockData = new byte[Disk.blockSize];
+	    short currentBlock = blockId;
+	    short nextBlock;
 
+        while (currentBlock != -1) {
+            SysLib.rawread(blockId,blockData);
+            nextBlock = SysLib.bytes2short(blockData, 0);
+            superblock.returnBlock(currentBlock);
+            currentBlock = nextBlock;
+        }
     }
 
 
