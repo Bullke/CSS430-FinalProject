@@ -6,21 +6,20 @@ public class SuperBlock
 	// 4 blocks of Inode blocks (16 Inodes for each)
 	// Rest of blocks for data
 
-	public final static int MAX_BLOCKS = 1000;
-	public final static int MAX_INODES = 64; // MAX_FILES
+	public final static int DEFAULT_BLOCKS = 1000;
+	public final static int DEFAULT_INODES = 64; // MAX_FILES
 
 	public int totalBlocks;
 	public int totalInodes;
 	public int freeList;
-	public Vector inodeBlock;
 
 	public SuperBlock(int diskSize)
 	{
-		byte[] superBlock = new byte[Disk.blockSize];
-		SysLib.rawread(0, superBlock);
-		totalBlocks = SysLib.bytes2int(superBlock, 0);
-		totalInodes = SysLib.bytes2int(superBlock, 4);
-		freeList = SysLib.bytes2int(superBlock, 8);
+		byte[] SuperBlock = new byte[Disk.blockSize];
+		SysLib.rawread(0, SuperBlock);
+		totalBlocks = SysLib.bytes2int(SuperBlock, 0);
+		totalInodes = SysLib.bytes2int(SuperBlock, 4);
+		freeList = SysLib.bytes2int(SuperBlock, 8);
 		if((totalBlocks == diskSize) && (totalInodes > 0) && (freeList >= 2))
 		{
 			// Disk contents are valid
@@ -30,35 +29,63 @@ public class SuperBlock
 		{
 			// Need to format disk
 			totalBlocks = diskSize;
-			FileSystem.format(MAX_INODES);
+			format(DEFAULT_INODES);
 		}
 	}
-
 	public void sync()
 	{
-		// Write back totalBlocks, inodeBlocks, and freeList to disk
+		// Write back totalBlocks, totalInodes, and freeList to disk
+		byte[] tempSuperblock = new byte[512];
+		SysLib.int2bytes(totalBlocks, tempSuperblock, 0);
+		SysLib.int2bytes(totalInodes, tempSuperblock, 4);
+		SysLib.int2bytes(freeList, tempSuperblock, 8);
+		SysLib.rawwrite(0, tempSuperblock);
 	}
-
 	public int getFreeBlock()
 	{
-	    int freeBlock = freeList;
-
-        if(freeBlock != -1) {
-            byte[] blockData = new byte[Disk.blockSize];
-            SysLib.rawread(freeBlock, blockData);
-
-            // next freeBlock
-            this.freeList = SysLib.bytes2int(blockData, 0);
-
-            // zero out first int in the block
-            SysLib.int2bytes(0, blockData, 0);
-            SysLib.rawwrite(freeBlock, blockData);
-        }
-
-		return freeBlock;
+		int tempFreeList = freeList;
+		// Dequeue the top block from the fre list
+		if(tempFreeList > 0)
+		{
+			byte[] tempData = new byte[512]; // Array autoinitializes to all zeroes
+			SysLib.rawread(freeList, tempData);
+			freeList = SysLib.bytes2int(tempData, 0);
+		}
+		return tempFreeList;
 	}
-	public void returnBlock(int blockNumber)
+	public boolean returnBlock(int blockNumber)
 	{
 		// Enqueue a given block to the end of the free list
+		if(blockNumber >= 0)
+		{
+			byte[] tempData = new byte[512]; // Array autoinitializes to all zeroes
+			SysLib.int2bytes(freeList, tempData, 0);
+			SysLib.rawwrite(blockNumber, tempData);
+			freeList = blockNumber;
+			return true;
+		}
+		return false;
+	}
+	public void format(int inodeNum)
+	{
+		totalInodes = inodeNum;
+		if(inodeNum < 0)
+		{
+			totalInodes = DEFAULT_INODES;
+		}
+		for(short position = 0; position < inodeNum; position++)
+		{
+			Inode newInode = new Inode();
+			newInode.flag = 0;
+			newInode.toDisk(position);
+		}
+		freeList = ((totalInodes / 16) + 2);
+		for(int position = freeList; position < DEFAULT_BLOCKS; position++)
+		{
+			byte[] newData = new byte[512]; // Array autoinitializes to all zeroes
+			SysLib.int2bytes((position + 1), newData, 0);
+			SysLib.rawwrite(position, newData);
+		}
+		sync();
 	}
 }
