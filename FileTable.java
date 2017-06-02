@@ -1,18 +1,30 @@
 import java.util.*;
 
+/*
+Maintains the file table shared among all user threads.
+ */
 public class FileTable
 {
+    private final static int UNUSED = 0;    //inode.flag statuses
+    private final static int USED = 1;
+    private final static int READ = 2;
+    private final static int WRITE = 3;
+    private final static int DELETE = 4;
 
    private Vector table;         // the actual entity of this file table
    private Directory dir;        // the root directory 
 
+    // Constructor
    public FileTable(Directory directory)
-   { // constructor
+   {
       table = new Vector( );     // instantiate a file (structure) table
       dir = directory;           // receive a reference to the Director
    }                             // from the file system
 
-   // major public methods
+   /* Allocates a new file table entry for this file name.
+      Updates inode fields.
+      Returns a reference to this file table
+      */
    public synchronized FileTableEntry falloc(String filename, String mode)
    {
       // allocate a new file (structure) table entry for this file name
@@ -35,11 +47,11 @@ public class FileTable
          }
 
 
-         if(true/*inode.flag is "read"*/)
+         if (mode.equals('r'))
          {
             break;
          }
-         else if(true/*inode.flag is "write"*/)
+         else if(inode.flag == )
          {
             try
             {
