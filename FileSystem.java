@@ -425,7 +425,35 @@ public class FileSystem
     }
 
 
-	public int seek(FileTableEntry ftEnt, int offset, int whence) { // not seekArgs, but ints or shorts
-		return 0;
+	public int seek(FileTableEntry ftEntry, int offset, int whence) { // not seekArgs, but ints or shorts
+        if (ftEntry == null) {
+            return ERROR;
+        }
+        switch (whence){
+
+            case SEEK_SET:
+                //seekPtr -> beginning + offset
+                int adjusted_offset = offset;
+                if ( adjusted_offset < 0 ) {
+                    adjusted_offset = 0;
+                }
+                else if (adjusted_offset > ftEntry.inode.length){
+                    adjusted_offset = ftEntry.inode.length;
+                }
+                ftEntry.seekPtr = adjusted_offset;
+                return OK;
+                
+            case SEEK_CUR:
+                //seekPtr -> current seekPtr + offset
+                seek(ftEntry, ftEntry.seekPtr + offset, SEEK_SET);
+                break;
+
+            case SEEK_END:
+                //seekPtr -> size + offset
+                // This case contradicts the requirement to set the ptr to the eof ???????????????????????????
+                seek(ftEntry, ftEntry.inode.length + offset, SEEK_SET);
+                break;
+        }
+		return ERROR;
 	}
 }
