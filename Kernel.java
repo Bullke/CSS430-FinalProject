@@ -50,10 +50,8 @@ public class Kernel
    private static Scheduler scheduler;
    private static Disk disk;
    private static Cache cache;
-   private static Directory directory;
+   // File System
    private static FileSystem fileSystem;
-    private static FileTable fileTable;
-
 
    // Synchronized Queues
    private static SyncQueue waitQueue;  // for threads to wait for their child
@@ -69,7 +67,6 @@ public class Kernel
    // The heart of Kernel
    public static int interrupt( int irq, int cmd, int param, Object args ) {
       TCB myTcb;
-
 
       switch( irq ) {
           case INTERRUPT_SOFTWARE: // System calls
@@ -88,10 +85,8 @@ public class Kernel
                       waitQueue = new SyncQueue(scheduler.getMaxThreads());
 
                       //TODO: You need to add instance of file table to kernel, in case BOOT right after new Disk()
-                      //Instantiate FileSystem objects
-                      directory = new Directory(64);
+                      //Instantiate FileSystem
                       fileSystem = new FileSystem(1000);
-                      fileTable = new FileTable(directory);
 
                       // instantiate a cache memory
                       cache = new Cache(disk.blockSize, 10);
@@ -137,6 +132,7 @@ public class Kernel
                           ioQueue.enqueueAndSleep(COND_DISK_FIN);
                       return OK;
                   case SYNC:     // synchronize disk data to a real file
+                      fileSystem.sync();
                       while (disk.sync() == false)
                           ioQueue.enqueueAndSleep(COND_DISK_REQ);
                       while (disk.testAndResetReady() == false)
@@ -168,7 +164,12 @@ public class Kernel
                               System.out.println("threaOS: caused read errors");
                               return ERROR;
                       }
-                      // return FileSystem.read( param, byte args[] );
+                      if ((myTcb = scheduler.getMyTcb()) != null) {
+                          FileTableEntry ftEnt = myTcb.getFtEnt(param);
+                          if (ftEnt != null) {
+                              return fileSystem.read(ftEnt, (byte[]) args );
+                          }
+                      }
                       return ERROR;
                   case WRITE:
                       switch (param) {
@@ -177,12 +178,19 @@ public class Kernel
                               return ERROR;
                           case STDOUT:
                               System.out.print((String) args);
-                              break;
+                              return OK;
                           case STDERR:
                               System.err.print((String) args);
-                              break;
+                              return OK;
                       }
-                      return OK;
+                      if ((myTcb = scheduler.getMyTcb()) != null) {
+                          FileTableEntry ftEnt = myTcb.getFtEnt(param);
+                          if (ftEnt != null) {
+                              return fileSystem.write(ftEnt, (byte[]) args );
+                          }
+                      }
+                      return ERROR;
+
                   case CREAD:   // to be implemented in assignment 4
                       return cache.read(param, (byte[]) args) ? OK : ERROR;
                   case CWRITE:  // to be implemented in assignment 4
@@ -261,7 +269,7 @@ public class Kernel
               return OK;
 
       }
-      return OK;    // Todo: REALLY????????????????
+      return OK;
    }
 
    // Spawning a new thread
