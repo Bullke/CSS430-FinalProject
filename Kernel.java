@@ -35,7 +35,7 @@ public class Kernel
    //              int whence )
    public final static int FORMAT  = 18; // SysLib.format( int files )
    public final static int DELETE  = 19; // SysLib.delete( String fileName )
-    public final static int FSIZE  = 20; // SysLib.fsize( int fd )
+   public final static int FSIZE  = 20; // SysLib.fsize( int fd )
 
    // Predefined file descriptors
    public final static int STDIN  = 0;
@@ -83,6 +83,10 @@ public class Kernel
                       disk = new Disk(1000);
                       disk.start();
 
+                      // instantiate synchronized queues
+                      ioQueue = new SyncQueue();
+                      waitQueue = new SyncQueue(scheduler.getMaxThreads());
+
                       //TODO: You need to add instance of file table to kernel, in case BOOT right after new Disk()
                       //Instantiate FileSystem objects
                       directory = new Directory(64);
@@ -92,9 +96,7 @@ public class Kernel
                       // instantiate a cache memory
                       cache = new Cache(disk.blockSize, 10);
 
-                      // instantiate synchronized queues
-                      ioQueue = new SyncQueue();
-                      waitQueue = new SyncQueue(scheduler.getMaxThreads());
+
                       return OK;
                   case EXEC:
                       return sysExec((String[]) args);
@@ -125,6 +127,7 @@ public class Kernel
                       while (disk.read(param, (byte[]) args) == false)
                           ioQueue.enqueueAndSleep(COND_DISK_REQ);
                       while (disk.testAndResetReady() == false)
+                          //SysLib.cout(ioQueue);
                           ioQueue.enqueueAndSleep(COND_DISK_FIN);
                       return OK;
                   case RAWWRITE: // write a block of data to disk
@@ -248,10 +251,10 @@ public class Kernel
 
           case INTERRUPT_DISK: // Disk interrupts
               // wake up the thread waiting for a service completion
-              ioQueue.dequeueAndWakeup(COND_DISK_FIN);
+              //ioQueue.dequeueAndWakeup(COND_DISK_FIN);
 
               // wake up the thread waiting for a request acceptance
-              ioQueue.dequeueAndWakeup(COND_DISK_REQ);
+              //ioQueue.dequeueAndWakeup(COND_DISK_REQ);
               return OK;
 
           case INTERRUPT_IO:   // other I/O interrupts (not implemented)
