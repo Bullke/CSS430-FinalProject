@@ -86,10 +86,10 @@ public class SysLib {
      */
     public static int format(int n){
         return Kernel.interrupt(Kernel.INTERRUPT_SOFTWARE,
-                Kernel.FORMAT, 0, n);
+                Kernel.FORMAT, n, null);
     }
 
-    public static int open(String filename, String mode){ //WRONG
+    public static int open(String filename, String mode){
         return Kernel.interrupt(Kernel.INTERRUPT_SOFTWARE,
                 Kernel.OPEN, 0, new String[] {filename, mode});
     }
