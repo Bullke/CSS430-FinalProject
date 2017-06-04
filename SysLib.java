@@ -26,9 +26,9 @@ public class SysLib {
 				 Kernel.SLEEP, milliseconds, null );
     }
 
-    public static int disk( int type ) {
+    public static int disk() {
 	return Kernel.interrupt( Kernel.INTERRUPT_DISK,
-				 type, 0, null );
+				 0, 0, null );
     }
 
     public static int cin( StringBuffer s ) {
@@ -118,7 +118,7 @@ public class SysLib {
     }
     public static int fsize(int fd){
         return Kernel.interrupt(Kernel.INTERRUPT_SOFTWARE,
-                Kernel.FSIZE, fd, null);
+                Kernel.SIZE, fd, null);
     }
 
     public static String[] stringToArgs( String s ) {

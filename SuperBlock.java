@@ -77,7 +77,7 @@ public class SuperBlock
 		{
 			Inode newInode = new Inode();
 			newInode.flag = 0;
-			newInode.toDisk(position);
+			newInode.toDisk((short)position);
 		}
 		freeList = ((totalInodes / 16) + 2);
 		for(int position = freeList; position < DEFAULT_BLOCKS; position++)
