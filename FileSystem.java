@@ -46,25 +46,44 @@ public class FileSystem
 		return ftEnt;
 	}
 
-	//TODO: You also need a way to make your FileSystem sync itself.
+	/*
+	Writes all data, superblock and directory to disk
+	 */
 	public void sync(){
+        FileTableEntry dirEntry = open ("/", "w");
+        byte[] data = directory.directory2bytes();
+        write(dirEntry, data);
+        close(dirEntry);
 
-
+        superblock.sync();
     }
 
 
+    /*
+    Formats the disk. Creates the files number of Inodes
+     */
     public boolean  format(int files) {
-	    return false;
-
+        while (!filetable.fempty()) {
+            ; // wait
+        }
+        // format superblock, directory, filetable
+        superblock.format(files);
+        directory = new Directory(files);
+        filetable = new FileTable(directory);
+	    return true;
     }
 
 
-    // Closes the file
-    public Boolean close (FileTableEntry ftEntry) {
+    /*
+     Closes the fileTableEntry if no threads are using it
+      */
+    public synchronized Boolean close (FileTableEntry ftEntry) {
+        ftEntry.count--;
+        if (ftEntry.count > 0) {
+            return false;
+        }
         return filetable.ffree(ftEntry);
     }
-
-
 
 
     /*
@@ -314,6 +333,7 @@ public class FileSystem
 
     private int append(FileTableEntry fileTableEnt, byte[] buffer) {
         int toWrite = buffer.length;
+        fileTableEnt.seekPtr = buffer.length;
         int lastOccupiedBlock = fileTableEnt.inode.length / Disk.blockSize;
         int freeSpaceOffsetInLastOccupiedBlock = -1;
         int lastOccupiedIndirectBlock = -1;
@@ -326,7 +346,7 @@ public class FileSystem
         }
 
         byte[] blockData = new byte[Disk.blockSize];
-        int chunksize;
+        //int chunksize;
 
         // case: append to last block which has free space
 
@@ -352,6 +372,7 @@ public class FileSystem
             srcPosition += chunksize;
             lastOccupiedBlock++;
             toWrite -= chunksize;
+            fileTableEnt.seekPtr += chunksize;
         }
 
         for (; lastOccupiedBlock < fileTableEnt.inode.direct.length; lastOccupiedBlock++) {
@@ -369,6 +390,7 @@ public class FileSystem
             SysLib.rawwrite(fileTableEnt.inode.direct[lastOccupiedBlock], blockData);
             srcPosition += chunksize;
             toWrite -= chunksize;
+            fileTableEnt.seekPtr += chunksize;
         }
 
         if (toWrite > 0) {
@@ -416,6 +438,7 @@ public class FileSystem
 
                 srcPosition += chunksize;
                 toWrite -= chunksize;
+                fileTableEnt.seekPtr += chunksize;
 
                 short lastIndirect = nextIndirectIdx;
                 nextIndirectIdx = (short) superblock.getFreeBlock();
@@ -447,7 +470,7 @@ public class FileSystem
             SysLib.rawwrite(currentBlock, blockData);
 
             toWrite -= chunksize;
-
+            fileTableEnt.seekPtr += chunksize;
             currentBlock = nextIndirectIdx;
         }
 
@@ -478,18 +501,35 @@ public class FileSystem
         }
     }
 
-	public int fsize(FileTableEntry fileTableEnt) {
+    /*
+    Returns the size of this file
+     */
+	public synchronized int fsize(FileTableEntry fileTableEnt) {
 	    assert (fileTableEnt != null);
 	    return fileTableEnt.inode.length;
-	    //return -1;
+
 	}
-	public Boolean deallocAllBlocks(FileTableEntry inputTable) {
+
+	/*
+    Deletes all blocks to which inode points
+	 */
+	public Boolean deallocAllBlocks(FileTableEntry ftEntry) {
+
+
 
 		return false;
 	}
 
-	public Boolean delete(String filename ) {
-	    return false;
+	/*
+	Delete a file.
+	Wait if it is used by other threads.
+	 */
+	public synchronized Boolean delete(String filename ) {
+        short iNumber = directory.namei(filename);
+        if (filetable.deleteInode(iNumber) ) {
+            return directory.ifree(iNumber);
+        }
+        return false;
     }
 
 
