@@ -89,18 +89,15 @@ public class FileSystem
     /*
     Returns the number of bytes that have been read or -1 upon an error
      */
-	public int read(FileTableEntry fileTableEnt, byte[] buffer) {
+	public synchronized int read(FileTableEntry fileTableEnt, byte[] buffer) {
 	    if (fileTableEnt.mode.equals('w') || fileTableEnt.mode.equals('a')) {
 	        return -1;
         }
 
 	    // 1. determine how many bytes to read
-        int toRead = fileTableEnt.inode.length;
+        int toRead = buffer.length;
 
-        // 2. allocate buffer for data
-        buffer = new byte[toRead];
-
-        // 3. read data from directs
+        // 2. read data from directs
         int currentDirect = fileTableEnt.inode.seekDirectBlock(fileTableEnt.seekPtr); //UPDATED
         int destPosition = 0;
 
@@ -162,9 +159,9 @@ public class FileSystem
     Can overwrite or append data
     TODO: write past the end of file?
      */
-	public int write(FileTableEntry fileTableEnt, byte[] buffer) {
+	public synchronized int write(FileTableEntry fileTableEnt, byte[] buffer) {
         if (fileTableEnt.mode.equals('r') ) {
-            return -1;
+            return Kernel.ERROR;
         }
 
         int toWrite = buffer.length;
@@ -187,7 +184,7 @@ public class FileSystem
             while (toWrite > 0 && directBlockId < fileTableEnt.inode.direct.length && directBlockId >= 0) {
 
                 short directBlock = fileTableEnt.inode.direct[directBlockId];
-                if (directBlockId == -1) {
+                if (directBlock == -1) {
                     directBlock = (short) superblock.getFreeBlock(); // new file size > old
                     if (directBlock == -1) {
                         return -1; // no free space on disk
@@ -328,10 +325,11 @@ public class FileSystem
         }
         fileTableEnt.inode.count++;
         fileTableEnt.inode.flag = 1;
+        fileTableEnt.inode.toDisk(fileTableEnt.iNumber);
         return buffer.length;
 	}
 
-    private int append(FileTableEntry fileTableEnt, byte[] buffer) {
+    private synchronized int append(FileTableEntry fileTableEnt, byte[] buffer) {
         int toWrite = buffer.length;
         fileTableEnt.seekPtr = buffer.length;
         int lastOccupiedBlock = fileTableEnt.inode.length / Disk.blockSize;

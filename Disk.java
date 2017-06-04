@@ -20,9 +20,6 @@ public class Disk extends Thread {
     private int currentBlockId;
     private int targetBlockId;
 
-    private final static int COND_DISK_REQ = 1; // wait condition 
-    private final static int COND_DISK_FIN = 2; // wait condition
-
     public Disk( int totalBlocks ) {
 	diskSize = ( totalBlocks > 0 ) ? totalBlocks : 1;
 	data = new byte[ diskSize * blockSize ];
@@ -92,7 +89,7 @@ public class Disk extends Thread {
 	if ( command == IDLE && readyBuffer == true ) 
         {
 	    readyBuffer = false;
-            SysLib.disk( COND_DISK_REQ );
+//            SysLib.disk( );
 	    return true;
 	} else
 	    return false;
@@ -130,7 +127,7 @@ public class Disk extends Thread {
     private synchronized void finishCommand( ) {
 	command = IDLE;
 	readyBuffer = true;
-	SysLib.disk( COND_DISK_FIN ); 
+	SysLib.disk( );
     }
 
     public void run ( ) {

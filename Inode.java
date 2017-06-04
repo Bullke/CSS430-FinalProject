@@ -44,7 +44,7 @@ public class Inode
     {
         // retrieving inode from disk
  	   //int blockNumber = (1 + (iNumber / 16));
-        int blockNumber = findTargetBlock(iNumber) + 1;
+        int blockNumber = findTargetBlock(iNumber);
  	   byte[] data = new byte[Disk.blockSize];
  	   SysLib.rawread(blockNumber, data); // read a block of data from disk
  	   int offset = ((iNumber % 16) * iNodeSize);
@@ -80,7 +80,7 @@ public class Inode
        for (int i = 0; i < directSize; i++) {
              SysLib.short2bytes(direct[i], data, (offset+ 8 + 2 * i));
         }
-        SysLib.short2bytes(indirect, data, offset);
+        SysLib.short2bytes(indirect, data, offset + 30);
 
        int writeResult = SysLib.rawwrite(blockNumber, data);
        if (writeResult != Kernel.OK ) {
@@ -115,7 +115,7 @@ public class Inode
     public short findTargetBlock(int iNumber)
     {
         if (iNumber >= 0 ) {
-            return (short) (iNumber % 16 + 1);
+            return (short) (iNumber / 16 + 1);
         }
 
         return -1;
