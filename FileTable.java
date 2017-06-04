@@ -103,12 +103,27 @@ public class FileTable
 
        if (table.removeElement(ftEntry)) { // ftEntry exists in File Table
            ftEntry.inode.toDisk(ftEntry.iNumber);
-           ftEntry.count--;
+           ftEntry.inode.count--;
            ftEntry.inode.flag = UNUSED;
            notifyAll();
            return true;
        }
       return false;
+   }
+
+   /*
+   Ffrees the inode that corresponds to this iNumber from table
+    */
+   public synchronized boolean deleteInode ( int iNumber) {
+       FileTableEntry ftEntry = table.firstElement();
+       for (int i = 1; i< table.size(); i++ ) {
+           ftEntry = table.elementAt(i);
+           if (ftEntry.iNumber == iNumber) {
+               ffree(ftEntry);
+               return true;
+           }
+       }
+       return false;
    }
 
    public synchronized boolean fempty()
