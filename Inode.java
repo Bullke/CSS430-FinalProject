@@ -47,7 +47,7 @@ public class Inode
         int blockNumber = findTargetBlock(iNumber) + 1;
  	   byte[] data = new byte[Disk.blockSize];
  	   SysLib.rawread(blockNumber, data); // read a block of data from disk
- 	   int offset = ((iNumber % 16) * 32);
+ 	   int offset = ((iNumber % 16) * iNodeSize);
 
  	   length = SysLib.bytes2int(data, offset);
  	   count = SysLib.bytes2short(data, offset + 4);
@@ -71,7 +71,7 @@ public class Inode
         int blockNumber = findTargetBlock(iNumber);
         byte[] data = new byte[Disk.blockSize];
         SysLib.rawread(blockNumber, data);
-        int offset = ((iNumber % 16) * 32);
+        int offset = ((iNumber % 16) * iNodeSize);
 
        SysLib.int2bytes(length, data, offset);
        SysLib.short2bytes(count, data, offset+ 4);
@@ -96,6 +96,7 @@ public class Inode
     {
         return indirect;
     }
+
     /*
     Returns true if indirect is set to indexBlockNumber succesfully
      */
@@ -111,13 +112,32 @@ public class Inode
     /*
     Finds the block to read/write
      */
-//    public short findTargetBlock(int offset)
     public short findTargetBlock(int iNumber)
     {
         if (iNumber >= 0 ) {
-            return (short) (iNumber % 16);
+            return (short) (iNumber % 16 + 1);
         }
 
+        return -1;
+    }
+
+    /*
+    Given a seekPointer, returns n-th direct block to which it belongs
+     */
+    public short seekDirectBlock (int seekPtr) {
+        if (seekPtr <= 11 * Disk.blockSize) {
+            return (short) (seekPtr / Disk.blockSize);
+        }
+        return -1;
+    }
+
+    /*
+    Given a seekPointer, returns n-th indirect block to which it belongs
+     */
+    public short seekIndirectBlock(int seekPtr) {
+        if (seekPtr <= 256 * Disk.blockSize) {
+            return (short) (seekPtr / Disk.blockSize);
+        }
         return -1;
     }
 }
