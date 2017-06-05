@@ -538,7 +538,7 @@ public class FileSystem
 
 	public int seek(FileTableEntry ftEntry, int offset, int whence) { // not seekArgs, but ints or shorts
         if (ftEntry == null) {
-            return ERROR;
+            return Kernel.ERROR;
         }
         switch (whence){
 
@@ -552,20 +552,18 @@ public class FileSystem
                     adjusted_offset = ftEntry.inode.length;
                 }
                 ftEntry.seekPtr = adjusted_offset;
-                return OK;
+                return ftEntry.seekPtr;
 
 
             case SEEK_CUR:
                 //seekPtr -> current seekPtr + offset
-                seek(ftEntry, ftEntry.seekPtr + offset, SEEK_SET);
-                break;
+                return seek(ftEntry, ftEntry.seekPtr + offset, SEEK_SET);
 
             case SEEK_END:
                 //seekPtr -> size + offset
                 // This case contradicts the requirement to set the ptr to the eof ???????????????????????????
-                seek(ftEntry, ftEntry.inode.length + offset, SEEK_SET);
-                break;
+                return seek(ftEntry, ftEntry.inode.length + offset, SEEK_SET);
         }
-		return ERROR;
+		return Kernel.ERROR;
 	}
 }
