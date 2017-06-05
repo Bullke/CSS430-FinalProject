@@ -90,12 +90,12 @@ public class FileSystem
     Returns the number of bytes that have been read or -1 upon an error
      */
 	public synchronized int read(FileTableEntry fileTableEnt, byte[] buffer) {
-	    if (fileTableEnt.mode.equals('w') || fileTableEnt.mode.equals('a')) {
+	    if (fileTableEnt.mode.equals("w") || fileTableEnt.mode.equals("a")) {
 	        return -1;
         }
 
 	    // 1. determine how many bytes to read
-        int toRead = buffer.length;
+        int toRead = Math.min(buffer.length, fileTableEnt.inode.length);
 
         // 2. read data from directs
         int currentDirect = fileTableEnt.inode.seekDirectBlock(fileTableEnt.seekPtr); //UPDATED
@@ -160,7 +160,7 @@ public class FileSystem
     TODO: write past the end of file?
      */
 	public synchronized int write(FileTableEntry fileTableEnt, byte[] buffer) {
-        if (fileTableEnt.mode.equals('r') ) {
+        if (fileTableEnt.mode.equals("r") ) {
             return Kernel.ERROR;
         }
 
@@ -168,8 +168,11 @@ public class FileSystem
 	    int currentBufferPosition = 0;
         byte[] blockData = new byte[Disk.blockSize];
 
-        if (fileTableEnt.mode.equals('a')) {
-            append(fileTableEnt, buffer);
+        if (fileTableEnt.mode.equals("a")) {
+            int numBytes = append(fileTableEnt, buffer);
+            fileTableEnt.inode.length += numBytes;
+            fileTableEnt.inode.toDisk(fileTableEnt.iNumber);
+            return numBytes;
 
         } else {  // overwrite
 
@@ -241,7 +244,7 @@ public class FileSystem
                 if (targetBlock == -1) {
                     return ERROR;
                 }
-                SysLib.cout("Indirect block to overwrite data to" + targetBlock);
+//                SysLib.cout(String.format("Indirect block to overwrite data to %s\n", targetBlock));
 
 
 //                // make an array of indirect block ids to which we will write data
@@ -321,7 +324,8 @@ public class FileSystem
 
 
 
-            fileTableEnt.inode.length = buffer.length;
+//            fileTableEnt.inode.length = buffer.length; // this may or may not be correct if new contents is smaller than old contents
+            fileTableEnt.inode.length = fileTableEnt.seekPtr; // this may or may not be correct if new contents is smaller than old contents
         }
         fileTableEnt.inode.count++;
         fileTableEnt.inode.flag = 1;
@@ -331,7 +335,7 @@ public class FileSystem
 
     private synchronized int append(FileTableEntry fileTableEnt, byte[] buffer) {
         int toWrite = buffer.length;
-        fileTableEnt.seekPtr = buffer.length;
+        fileTableEnt.seekPtr = fileTableEnt.inode.length;
         int lastOccupiedBlock = fileTableEnt.inode.length / Disk.blockSize;
         int freeSpaceOffsetInLastOccupiedBlock = -1;
         int lastOccupiedIndirectBlock = -1;
@@ -358,8 +362,9 @@ public class FileSystem
 
     int appendStartingFromDirectBlock(FileTableEntry fileTableEnt, byte[] buffer, int lastOccupiedBlock, int offset) {
 	    byte[] blockData = new byte[Disk.blockSize];
-        int chunksize = Disk.blockSize - offset;
-        int toWrite = buffer.length;
+	    int toWrite = buffer.length;
+        int chunksize = Math.min(Disk.blockSize - offset, toWrite);
+
         int srcPosition = 0;
 
         // fill the last block
@@ -398,7 +403,7 @@ public class FileSystem
             appendStartingFromIndirectBlock(fileTableEnt,remainingBuffer, -1,0 );
         }
 
-        return 0;
+        return srcPosition;
     }
 
     /**

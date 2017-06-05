@@ -43,9 +43,9 @@ public class FileTable
               inode = new Inode(iNumber);
               if(mode.compareTo("r") == 0)
               {
-                  if((inode.flag == UNUSED) || (inode.flag == USED) || (inode.flag == READ))
+                  if((inode.flag == UNUSED) || (inode.flag == USED) )
                   {
-                      inode.flag = READ;
+                      inode.flag = USED;
                       break;
                   }
                   try
@@ -56,7 +56,13 @@ public class FileTable
               }
               else
               {
-                  if((inode.flag == UNUSED) || (inode.flag == USED))
+
+                  if ((inode.flag == UNUSED) || (inode.flag == WRITE))
+                  {
+                      inode.flag = READ;
+                      break;
+                  }
+                  if ((inode.flag == USED) || (inode.flag == READ))
                   {
                       inode.flag = WRITE;
                       break;
@@ -72,9 +78,8 @@ public class FileTable
           {
               iNumber = dir.ialloc(filename);
               inode = new Inode(iNumber);
-              inode.flag = WRITE;
+              inode.flag = READ;
               break;
-
           }
           else
           {
@@ -104,13 +109,16 @@ public class FileTable
 
     if (table.removeElement(ftEntry))
     { // ftEntry exists in File Table
-        Inode newInode = new Inode(ftEntry.iNumber);
-        if(newInode.flag == READ || newInode.flag == WRITE)
+//        Inode inode = new Inode(ftEntry.iNumber);
+        Inode inode = ftEntry.inode;
+        if(inode.flag == READ || inode.flag == WRITE)
         {
-            newInode.flag = USED;
+            inode.flag = USED;
+        } else {
+            inode.flag = UNUSED;
         }
-        newInode.count--;
-        newInode.toDisk(ftEntry.iNumber);
+        inode.count--;
+        inode.toDisk(ftEntry.iNumber);
         notify();
         return true;
     }
