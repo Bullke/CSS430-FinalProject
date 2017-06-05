@@ -136,7 +136,7 @@ public class FileSystem
             int chunksize;
             int blockOffset = 2;
 
-            if (fileTableEnt.seekPtr % indirectBlockSize != 0) {
+            if ((fileTableEnt.seekPtr - fileTableEnt.inode.direct.length * Disk.blockSize) % indirectBlockSize != 0) {
                 chunksize = Math.min(toRead, (fileTableEnt.seekPtr / indirectBlockSize + 1) * indirectBlockSize - fileTableEnt.seekPtr);
                 blockOffset = fileTableEnt.seekPtr % indirectBlockSize;
             } else {
@@ -233,46 +233,35 @@ public class FileSystem
                 freeIndirectBlocks(fileTableEnt.inode.indirect);
                 fileTableEnt.inode.indirect = -1;
             } else {
+                // handle seek ??
+
                 // write indirects
                 int currentIndirectPosition = toWrite;
-                short targetBlock = -1;
+//                short indirectBlockId = fileTableEnt.inode.seekIndirectBlock(fileTableEnt.seekPtr);
+                short indirectBlock = fileTableEnt.inode.indirect;
+                if (indirectBlock == -1) {
+                    indirectBlock = (short)superblock.getFreeBlock();
+                    if (indirectBlock == -1) {
+                        return Kernel.ERROR;
+                    }
+                    fileTableEnt.inode.indirect = indirectBlock;
+                }
+
                 int indirectBlockSize = Disk.blockSize - 2;
                 int indirectBlockOffset = -1;
                 //short oldIndirectChainHead = fileTableEnt.inode.indirect;
 
                 // find a block that contains seek pointer
-                targetBlock = fileTableEnt.inode.seekIndirectBlock(fileTableEnt.seekPtr);
-                if (targetBlock == -1) {
-                    return ERROR;
-                }
+//                targetBlock = fileTableEnt.inode.seekIndirectBlock(fileTableEnt.seekPtr);
+//                if (targetBlock == -1) {
+//                    return ERROR;
+//                }
 //                SysLib.cout(String.format("Indirect block to overwrite data to %s\n", targetBlock));
 
-
-//                // make an array of indirect block ids to which we will write data
-//                int indirectBlockSize = (Disk.blockSize - 2);
-//
-//                // array of free blocks to use as next
-//                short[] nextIndirectBlocks = new short[(toWrite - 1) / indirectBlockSize + 1];
-//                Arrays.fill(nextIndirectBlocks, (short)-1);
-//
-//                short indirectBlock = (short)superblock.getFreeBlock();
-//                if (indirectBlock == -1) {
-//                    return -1;
-//                }
-//                // find free blocks to write
-//                for ( int i = 0; i < nextIndirectBlocks.length - 1; i++) {
-//                    nextIndirectBlocks[i] = (short) superblock.getFreeBlock();
-//                    if (nextIndirectBlocks[i] == -1) {
-//                        freeBlocks(nextIndirectBlocks);
-//                        return -1;
-//                    }
-//                }
-
                 int iteration = 0; // keeps the next indirect block's id
-                short indirectBlock = targetBlock;
                 short nextIndirectBlock = -1;
                 while (toWrite > 0) {
-                    if (fileTableEnt.seekPtr % indirectBlockSize != 0) {
+                    if ((fileTableEnt.seekPtr - Disk.blockSize * fileTableEnt.inode.direct.length)% indirectBlockSize != 0) {
                         // read the block data starting from seek pointer
                         chunksize = Math.min(toWrite, (fileTableEnt.seekPtr / indirectBlockSize + 1) * indirectBlockSize - fileTableEnt.seekPtr);
                         blockOffset = fileTableEnt.seekPtr % indirectBlockSize;
@@ -281,23 +270,24 @@ public class FileSystem
                         blockOffset = 2;
                     }
                     // find the block number of next indirect block
-                    byte[] temp = new byte[Disk.blockSize];
-                    SysLib.rawread(indirectBlock,temp );
-                    nextIndirectBlock = SysLib.bytes2short(temp, 0);
-                    if (nextIndirectBlock == -1) {
+                    byte[] existingBlock = new byte[Disk.blockSize];
+                    SysLib.rawread(indirectBlock, existingBlock);
+                    nextIndirectBlock = SysLib.bytes2short(existingBlock, 0);
+                    if (nextIndirectBlock <= 0) {
                         nextIndirectBlock = (short) superblock.getFreeBlock();
                         if (nextIndirectBlock == -1) {
-                            return  ERROR;
+                            return  Kernel.ERROR;
                         }
                     }
 
-                    SysLib.short2bytes(indirectBlock, blockData, 0);
+                    SysLib.short2bytes(nextIndirectBlock, blockData, 0);
                     System.arraycopy(buffer, currentBufferPosition, blockData, blockOffset, chunksize);
                     SysLib.rawwrite(indirectBlock, blockData);
 //
                     toWrite -= chunksize;
                     fileTableEnt.seekPtr+= chunksize;
                     indirectBlock = nextIndirectBlock;
+                    currentBufferPosition += chunksize;
                 }
 
 //               /* while (toWrite > 0) {

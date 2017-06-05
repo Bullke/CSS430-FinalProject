@@ -125,7 +125,7 @@ public class Inode
     Given a seekPointer, returns n-th direct block to which it belongs
      */
     public short seekDirectBlock (int seekPtr) {
-        if (seekPtr <= 11 * Disk.blockSize) {
+        if (seekPtr < direct.length * Disk.blockSize) {
             return (short) (seekPtr / Disk.blockSize);
         }
         return -1;
@@ -135,8 +135,8 @@ public class Inode
     Given a seekPointer, returns n-th indirect block to which it belongs
      */
     public short seekIndirectBlock(int seekPtr) {
-        if (seekPtr <= 256 * Disk.blockSize) {
-            return (short) (seekPtr / Disk.blockSize);
+        if (seekPtr >= direct.length * Disk.blockSize) {
+            return (short) ((seekPtr - direct.length * Disk.blockSize) / (Disk.blockSize - 2));
         }
         return -1;
     }
