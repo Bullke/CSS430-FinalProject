@@ -1,11 +1,10 @@
 import java.util.*;
 
+/*
+Superblock occupies block 0 and holds information about file system.
+ */
 public class SuperBlock
 {
-	// 0th block for SuperBlock
-	// 4 blocks of Inode blocks (16 Inodes for each)
-	// Rest of blocks for data
-
 	public final static int DEFAULT_BLOCKS = 1000;
 	public final static int DEFAULT_INODES = 64; // MAX_FILES
 
@@ -32,33 +31,46 @@ public class SuperBlock
 			format(DEFAULT_INODES);
 		}
 	}
+	/*
+	Writes back totalBlocks, totalInodes, and freeList to disk.
+	 */
+
 	public void sync()
 	{
-		// Write back totalBlocks, totalInodes, and freeList to disk
+
 		byte[] tempSuperblock = new byte[512];
 		SysLib.int2bytes(totalBlocks, tempSuperblock, 0);
 		SysLib.int2bytes(totalInodes, tempSuperblock, 4);
 		SysLib.int2bytes(freeList, tempSuperblock, 8);
 		SysLib.rawwrite(0, tempSuperblock);
 	}
+
+	/*
+	Returns the first free block from the free list.
+	 */
+
 	public int getFreeBlock()
 	{
 		int tempFreeList = freeList;
 		// Dequeue the top block from the fre list
 		if(tempFreeList > 0)
 		{
-			byte[] tempData = new byte[512]; // Array autoinitializes to all zeroes
+			byte[] tempData = new byte[512];
 			SysLib.rawread(freeList, tempData);
 			freeList = SysLib.bytes2int(tempData, 0);
 		}
 		return tempFreeList;
 	}
+
+	/*
+	Enqueues a given block to the end of the free list.
+	 */
 	public boolean returnBlock(int blockNumber)
 	{
-		// Enqueue a given block to the end of the free list
+
 		if(blockNumber >= 0)
 		{
-			byte[] tempData = new byte[512]; // Array autoinitializes to all zeroes
+			byte[] tempData = new byte[512];
 			SysLib.int2bytes(freeList, tempData, 0);
 			SysLib.rawwrite(blockNumber, tempData);
 			freeList = blockNumber;
@@ -66,6 +78,11 @@ public class SuperBlock
 		}
 		return false;
 	}
+
+	/*
+	Formats the file system.
+	 */
+
 	public void format(int inodeNum)
 	{
 		totalInodes = inodeNum;
@@ -82,7 +99,7 @@ public class SuperBlock
 		freeList = ((totalInodes / 16) + 2);
 		for(int position = freeList; position < DEFAULT_BLOCKS; position++)
 		{
-			byte[] newData = new byte[512]; // Array autoinitializes to all zeroes
+			byte[] newData = new byte[512];
 			SysLib.int2bytes((position + 1), newData, 0);
 			SysLib.rawwrite(position, newData);
 		}

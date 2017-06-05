@@ -5,21 +5,21 @@ Maintains the file table shared among all user threads.
  */
 public class FileTable
 {
-  private final static int UNUSED = 0;    //inode.flag statuses
+  private final static int UNUSED = 0;      //inode.flag statuses
   private final static int USED = 1;
   private final static int READ = 2;
   private final static int WRITE = 3;
-  private final static int DELETE = 4; // ??
+  private final static int DELETE = 4;
 
-  private Vector <FileTableEntry> table;         // the actual entity of this file table
-  private Directory dir;        // the root directory 
+  private Vector <FileTableEntry> table;    // the actual entity of this file table
+  private Directory dir;                    // the root directory
 
   // Constructor
   public FileTable(Directory directory)
   {
-     table = new Vector<FileTableEntry>();     // instantiate a file (structure) table
-     dir = directory;           // receive a reference to the Director
-  }                             // from the file system
+     table = new Vector<FileTableEntry>();   // instantiate a file (structure) table
+     dir = directory;                        // receive a reference to the Director
+  }
 
   /* Allocates a new file table entry for this file name.
     Updates inode fields.
@@ -27,12 +27,7 @@ public class FileTable
     */
   public synchronized FileTableEntry falloc(String filename, String mode)
   {
-      // allocate a new file (structure) table entry for this file name
-      // allocate/retrieve and register the corresponding inode using dir
-      // increment this inode's count
-      // immediately write back this inode to the disk
-      // return a reference to this file (structure) table entry
-      short iNumber = -1;
+     short iNumber = -1;
       Inode inode = null;
       while(true)
       {
@@ -94,22 +89,18 @@ public class FileTable
   }
 
   /*
-  Whenever inode is pointed by a new file structure table entry, its count is incremented.
-  When a file structure table entry is released, this count should be decremented.
-  A new file structure table entry is created when a thread opens a file and,
-  and it is deleted when the thread closes this file.
+   Receives a file table entry reference.
+   Saves the corresponding inode to the disk
+   Frees this file table entry.
+   Returns true if this file table entry found in my table.
   */
 
   public synchronized boolean ffree(FileTableEntry ftEntry)
   {
-    // receive a file table entry reference
-    // save the corresponding inode to the disk
-    // free this file table entry.
-    // return true if this file table entry found in my table
+
 
     if (table.removeElement(ftEntry))
-    { // ftEntry exists in File Table
-//        Inode inode = new Inode(ftEntry.iNumber);
+    {
         Inode inode = ftEntry.inode;
         if(inode.flag == READ || inode.flag == WRITE)
         {
@@ -125,26 +116,11 @@ public class FileTable
     return false;
   }
 
-   /*
-   Ffrees the inode that corresponds to this iNumber from table
-    */
-  public synchronized boolean deleteInode(int iNumber)
-  {
-    FileTableEntry ftEntry = table.firstElement();
-    for (int i = 1; i< table.size(); i++)
-    {
-        ftEntry = table.elementAt(i);
-        if (ftEntry.iNumber == iNumber)
-        {
-            ffree(ftEntry);
-            return true;
-        }
-    }
-    return false;
-  }
-
+  /*
+  Returns true if table is empty.
+   */
   public synchronized boolean fempty()
   {
-     return table.isEmpty();  // return if table is empty 
-  }                            // should be called before starting a format
+     return table.isEmpty();
+  }
 }

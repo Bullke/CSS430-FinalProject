@@ -183,23 +183,23 @@ public class Kernel
                         return fs.write( ftEnt, ( byte[] )args );
                   }
                   return ERROR;
-               case CREAD:   // to be implemented in assignment 4
+               case CREAD:
                   return cache.read( param, ( byte[] )args ) ? OK : ERROR;
-               case CWRITE:  // to be implemented in assignment 4
+               case CWRITE:
                   return cache.write( param, ( byte[] )args ) ? OK : ERROR;
-               case CSYNC:   // to be implemented in assignment 4
+               case CSYNC:
                   cache.sync( );
                   return OK;
-               case CFLUSH:  // to be implemented in assignment 4
+               case CFLUSH:
                   cache.flush( );
                   return OK;
-               case OPEN:    // to be implemented in project
+               case OPEN:
                   if ( ( myTcb = scheduler.getMyTcb( ) ) != null ) {
                      String[] s = ( String[] )args;
                      return myTcb.getFd( fs.open( s[0], s[1] ) );
                   } else
                      return ERROR;
-               case CLOSE:   // to be implemented in project
+               case CLOSE:
                   if ( ( myTcb = scheduler.getMyTcb( ) ) != null ) {
                      FileTableEntry ftEnt = myTcb.getFtEnt( param );
                      if ( ftEnt == null || fs.close( ftEnt ) == false )
@@ -209,14 +209,14 @@ public class Kernel
                      return OK;
                   }
                   return ERROR;
-               case SIZE:    // to be implemented in project
+               case SIZE:
                   if ( ( myTcb = scheduler.getMyTcb( ) ) != null ) {
                      FileTableEntry ftEnt = myTcb.getFtEnt( param );
                      if ( ftEnt != null )
                         return fs.fsize( ftEnt );
                   }
                   return ERROR;
-               case SEEK:    // to be implemented in project
+               case SEEK:
                   if ( ( myTcb = scheduler.getMyTcb( ) ) != null ) {
                      int[] seekArgs = ( int[] )args;
                      FileTableEntry ftEnt = myTcb.getFtEnt( param );
@@ -224,7 +224,7 @@ public class Kernel
                         return fs.seek( ftEnt, seekArgs[0], seekArgs[1] );
                   } 
                   return ERROR;
-               case FORMAT:  // to be implemented in project
+               case FORMAT:
                   return ( fs.format( param ) == true ) ? OK : ERROR;
                case DELETE:  // to be implemented in project
                   return ( fs.delete( (String)args ) == true ) ? OK : ERROR;
@@ -238,7 +238,7 @@ public class Kernel
             ioQueue.dequeueAndWakeup( COND_DISK_REQ );
 
             return OK;
-         case INTERRUPT_IO:   // other I/O interrupts (not implemented)
+         case INTERRUPT_IO:
             return OK;
       }
       return OK;
@@ -252,9 +252,9 @@ public class Kernel
       try {
          //get the user thread class from its name
          Class thrClass = Class.forName( thrName ); 
-         if ( args.length == 1 ) // no arguments
+         if ( args.length == 1 )
             thrObj = thrClass.newInstance( ); // instantiate this class obj
-         else {                  // some arguments
+         else {
             // copy all arguments into thrArgs[] and make a new constructor
             // argument object from thrArgs[]
             String thrArgs[] = new String[ args.length - 1 ];

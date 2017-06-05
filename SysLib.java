@@ -81,42 +81,40 @@ public class SysLib {
 				 Kernel.CSYNC, 0, null );
     }
 
-    /*
-    ADDED IN PR5 TODO: check Params & args if it is right
-     */
-    public static int format(int n){
+
+    public static int format(int n) {
         return Kernel.interrupt(Kernel.INTERRUPT_SOFTWARE,
                 Kernel.FORMAT, n, null);
     }
 
-    public static int open(String filename, String mode){
+    public static int open(String filename, String mode) {
         return Kernel.interrupt(Kernel.INTERRUPT_SOFTWARE,
                 Kernel.OPEN, 0, new String[] {filename, mode});
     }
 
-    public static int read(int fd, byte buffer[]){
+    public static int read(int fd, byte buffer[]) {
         return Kernel.interrupt(Kernel.INTERRUPT_SOFTWARE,
                 Kernel.READ, fd, buffer);
     }
 
-    public static int write(int fd, byte buffer[]){
+    public static int write(int fd, byte buffer[]) {
         return Kernel.interrupt(Kernel.INTERRUPT_SOFTWARE,
                 Kernel.WRITE, fd, buffer);
     }
-    public static int seek(int fd, int offset, int whence){
+    public static int seek(int fd, int offset, int whence) {
         return Kernel.interrupt(Kernel.INTERRUPT_SOFTWARE,
                 Kernel.SEEK, fd, new int[] {offset, whence});
     }
 
-    public static int close(int fd){
+    public static int close(int fd) {
         return Kernel.interrupt(Kernel.INTERRUPT_SOFTWARE,
                 Kernel.CLOSE, fd, null);
     }
-    public static int delete(String fileName){
+    public static int delete(String fileName) {
         return Kernel.interrupt(Kernel.INTERRUPT_SOFTWARE,
                 Kernel.DELETE, 0, fileName);
     }
-    public static int fsize(int fd){
+    public static int fsize(int fd) {
         return Kernel.interrupt(Kernel.INTERRUPT_SOFTWARE,
                 Kernel.SIZE, fd, null);
     }

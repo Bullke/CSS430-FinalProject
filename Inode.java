@@ -4,6 +4,10 @@
 // Number of file table entries pointing to this node
 // Flag: 0 - unused, 1 - used
 
+/*
+Inode holds information about the file.
+ */
+
 public class Inode
 {
     private final static int iNodeSize = 32;       // fix to 32 bytes
@@ -16,7 +20,7 @@ public class Inode
     public short indirect;                         // a indirect pointer
 
     /*
-    Default constructor initializes empty Inode
+    Default constructor initializes empty Inode.
      */
     public Inode()
     {
@@ -31,20 +35,12 @@ public class Inode
     }
 
     /*
-     When such an existing file is opened, you should find the corresponding inode from the disk.
-     First, refer to the directory in order to find the inode number. From this inode number, you can calculate
-     which disk block contains the inode. Read this disk block and get this inode information.
-      Where should you store such inode information then? You should instantiate an inode object first, and then
-      reinitialize it with the inode information retrieved from the disk.
-
-      ADDED: FileTable decides whether to create an empty Inode or it already exists
-      Retrieves inode with the corresponding iNumber from disk.
+     Constructor to create an Inode given an iNumber.
      */
     public Inode(short iNumber)
     {
         // retrieving inode from disk
- 	   //int blockNumber = (1 + (iNumber / 16));
-        int blockNumber = findTargetBlock(iNumber);
+ 	   int blockNumber = findTargetBlock(iNumber);
  	   byte[] data = new byte[Disk.blockSize];
  	   SysLib.rawread(blockNumber, data); // read a block of data from disk
  	   int offset = ((iNumber % 16) * iNodeSize);
@@ -61,13 +57,12 @@ public class Inode
 
 
     /*
-    Write back the contents of Inode to disk
-    Returns 0 for success and -1 for failure
+    Write back the contents of Inode to disk.
+    Returns 0 for success and -1 for failure.
      */
     public int toDisk(short iNumber)
     {
         // save to disk as the i-th inode
-        //int blockNumber = iNumber % 16;
         int blockNumber = findTargetBlock(iNumber);
         byte[] data = new byte[Disk.blockSize];
         SysLib.rawread(blockNumber, data);
@@ -90,27 +85,7 @@ public class Inode
     }
 
     /*
-    Returns the block number
-     */
-    public short getIndexBlockNumber()
-    {
-        return indirect;
-    }
-
-    /*
-    Returns true if indirect is set to indexBlockNumber succesfully
-     */
-    public Boolean setIndexBlock(short indexBlockNumber)
-    {
-       if (indirect == -1) {
-           indirect = indexBlockNumber;
-           return true;
-       }
-       return false;
-    }
-
-    /*
-    Finds the block to read/write
+    Finds and returns the block to read/write or -1 otherwise.
      */
     public short findTargetBlock(int iNumber)
     {
@@ -122,22 +97,15 @@ public class Inode
     }
 
     /*
-    Given a seekPointer, returns n-th direct block to which it belongs
+    Given a seekPointer, returns n-th direct block to which it belongs.
+    Returns -1 if the block was not found.
      */
-    public short seekDirectBlock (int seekPtr) {
+    public short seekDirectBlock (int seekPtr)
+    {
         if (seekPtr < direct.length * Disk.blockSize) {
             return (short) (seekPtr / Disk.blockSize);
         }
         return -1;
     }
 
-    /*
-    Given a seekPointer, returns n-th indirect block to which it belongs
-     */
-    public short seekIndirectBlock(int seekPtr) {
-        if (seekPtr >= direct.length * Disk.blockSize) {
-            return (short) ((seekPtr - direct.length * Disk.blockSize) / (Disk.blockSize - 2));
-        }
-        return -1;
-    }
 }
