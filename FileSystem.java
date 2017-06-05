@@ -318,7 +318,7 @@ public class FileSystem
 //            fileTableEnt.inode.length = buffer.length; // this may or may not be correct if new contents is smaller than old contents
             fileTableEnt.inode.length = fileTableEnt.seekPtr; // this may or may not be correct if new contents is smaller than old contents
         }
-        fileTableEnt.inode.count++;
+        //fileTableEnt.inode.count++;
         fileTableEnt.inode.flag = 1;
         fileTableEnt.inode.toDisk(fileTableEnt.iNumber);
         return buffer.length;
@@ -547,10 +547,18 @@ public class FileSystem
 	Delete a file.
 	Wait if it is used by other threads.
 	 */
-	public synchronized Boolean delete(String filename ) {
-        short iNumber = directory.namei(filename);
+	public synchronized Boolean delete(String filename )
+    {
+        /*short iNumber = directory.namei(filename);
         if (filetable.deleteInode(iNumber) ) {
             return directory.ifree(iNumber);
+        }
+        return false;*/
+        FileTableEntry ftEntry = open(filename, "w");
+        if (directory.ifree(ftEntry.iNumber) && close(ftEntry))
+        { //try to free and
+            // delete
+            return true;
         }
         return false;
     }
