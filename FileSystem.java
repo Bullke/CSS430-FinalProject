@@ -206,6 +206,7 @@ public class FileSystem
 
                 if (chunksize < Disk.blockSize) {
                     java.util.Arrays.fill(blockData, (byte) 0);
+                    SysLib.rawread(directBlock, blockData);
                 }
 
                 System.arraycopy(buffer, currentBufferPosition, blockData, blockOffset, chunksize);
