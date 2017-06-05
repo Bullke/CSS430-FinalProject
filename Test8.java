@@ -29,11 +29,11 @@ public class Test8 extends Thread {
             SysLib.cout("Correct behavior of format(1)......................\n");
 
         if (test2()) // check fd sequence on open
-            SysLib.cout("Correct behavior of open........................\n");
+            SysLib.cout("Correct sequence of fd on many openings........................\n");
         if (test3()) // write buf[512] and check size and SysLib.fsize()
-            SysLib.cout("Correct behavior of writing a few bytes........\n");
-        if (test4()) // close fd
-            SysLib.cout("Correct behavior of close.......................\n");
+            SysLib.cout("Correct fsize on writing.......\n");
+        if (test4()) // open for read and try to write
+            SysLib.cout("Correct: cannot write if the file is open in reading mode...............\n");
         SysLib.exit();
     }
 
@@ -70,34 +70,38 @@ public class Test8 extends Thread {
         //.............................................."
         SysLib.cout( "1: formating disk ( 64 )...................\n" );
         SysLib.format( 64 );
-        SysLib.cout( "2: fd = " + fd + " open( \"css430\", \"w+\" )....\n" );
-        fd = SysLib.open( "css430", "w+" );
-        if ( fd != 3 ) {
-            SysLib.cout( "fd = " + fd + " (wrong)\n" );
+        int fd1 = SysLib.open( "css430", "w+" );
+        SysLib.cout( "2: fd = " + fd1 + "-> " );
+        if ( fd1 != 3 ) {
+            SysLib.cout( "fd = " + fd1 + " (wrong)\n" );
             return false;
         }
-        SysLib.cout( "2: fd = " + fd + "open( \"css431\", \"w+\" )....\n" );
-        fd = SysLib.open( "css431", "w+" );
-        if ( fd != 4 ) {
-            SysLib.cout( "fd = " + fd + " (wrong)\n" );
+        int fd2 = SysLib.open( "css431", "w+" );
+        SysLib.cout( "2: fd = " + fd2 + "-> " );
+        if ( fd2 != 4 ) {
+            SysLib.cout( "fd = " + fd2 + " (wrong)\n" );
             return false;
         }
-        SysLib.cout( "2: fd = " + fd + " open( \"css432\", \"w+\" )....\n" );
-        fd = SysLib.open( "css432", "w+" );
-        if ( fd != 5 ) {
-            SysLib.cout( "fd = " + fd + " (wrong)\n" );
+        int fd3 = SysLib.open( "css432", "w+" );
+        SysLib.cout( "2: fd = " + fd3  );
+        if ( fd3 != 5 ) {
+            SysLib.cout( "fd = " + fd3 + " (wrong)\n" );
             return false;
         }
-        SysLib.cout( "successfully completed\n" );
+        SysLib.close( fd1 );
+        SysLib.close( fd2 );
+        SysLib.close( fd3 );
+        SysLib.cout( "    successfully completed\n" );
         return true;
     }
 
     // Checks if SysLib.fsize() performs correctly
     private boolean test3( ) {
         //.............................................."
-        SysLib.cout( "3: size = write( fd, buf[512] )....\n" );
-        for ( byte i = 0; i < 16; i++ )
-            buf512[i] = i;
+        SysLib.cout( "3: Fsize = write( fd, buf[512] )....\n" );
+        int fd = SysLib.open( "css430", "w" );
+//        for ( byte i = 0; i < 16; i++ )
+//            buf512[i] = i;
         int size = SysLib.write( fd, buf512 );
         if ( size != 512 ) {
             SysLib.cout( "size = " + size + " (wrong)\n" );
@@ -112,28 +116,38 @@ public class Test8 extends Thread {
             return false;
         }
         SysLib.cout( "Fsize check: successfully completed\n" );
+        SysLib.close(fd);
         return true;
     }
 
+    // Trying to write to the file opened in a read mode should not work
     private boolean test4( ) {
         //.............................................."
-        SysLib.cout( "4: close( fd )...................." );
-        SysLib.close( fd );
-
-        int size = SysLib.write( fd, buf512 );
-        if ( size > 0 ) {
-            SysLib.cout( "writable even after closing the file\n" );
+        SysLib.cout("4:Open for read and then write ...............\n");
+        SysLib.cout( "2: fd = " + fd + " open( \"css430\", \"r\" )....\n" );
+        fd = SysLib.open( "css430", "r" );
+        if ( fd != 3 ) {
+            SysLib.cout( "fd = " + fd + " (wrong)\n" );
             return false;
         }
 
-        SysLib.cout( "successfully completed\n" );
+        byte[] tmpBuf1 = new byte[512];
+        int size = SysLib.read( fd, tmpBuf );
+        if ( size != 512 ) {
+            SysLib.cout( "read = " + size + " (wrong)\n" );
+            //SysLib.close( fd );
+            return false;
+        }
+
+        byte[] tmpBuf2 = new byte[512];
+        size = SysLib.write( fd, tmpBuf2 );
+        if ( size != -1 ) {
+            SysLib.cout( "wrote = " + size + " (wrong)\n" );
+            SysLib.close( fd );
+            return false;
+        }
+        SysLib.cout("Open for read and write: cannot write if the file is open for read\n");
         return true;
     }
-
-
-
-
-
-
 
 }
