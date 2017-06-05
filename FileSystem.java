@@ -104,7 +104,7 @@ public class FileSystem
         byte[] blockData = new byte[Disk.blockSize];
 
 
-        while (toRead > 0 && currentDirect < fileTableEnt.inode.direct.length) {
+        while (toRead > 0 && currentDirect < fileTableEnt.inode.direct.length && currentDirect >= 0) {
             assert fileTableEnt.inode.direct[currentDirect] != -1;
             int chunksize = 0;
             int blockOffset = 0;
@@ -483,6 +483,18 @@ public class FileSystem
             superblock.returnBlock(currentBlock);
             currentBlock = nextBlock;
         }
+    }
+
+    public byte[] freeIndirectBlocks(FileTableEntry ftEntry)
+    {
+        if(ftEntry.inode.indirect > 0)
+        {
+            byte[] blockToReturn = new byte[Disk.blockSize];
+            SysLib.rawread((int)ftEntry.inode.indirect, blockToReturn);
+            ftEntry.inode.indirect = -1;
+            return blockToReturn;
+        }
+        return null;
     }
 
 
