@@ -239,7 +239,8 @@ public class FileSystem
                 // write indirects
                 int currentIndirectPosition = toWrite;
 //                short indirectBlockId = fileTableEnt.inode.seekIndirectBlock(fileTableEnt.seekPtr);
-                short indirectBlock = fileTableEnt.inode.indirect;
+//                short indirectBlock = fileTableEnt.inode.indirect;
+                short indirectBlock = findIndirectBlockNumberById(fileTableEnt, (fileTableEnt.seekPtr - Disk.blockSize * fileTableEnt.inode.direct.length) / (Disk.blockSize - 2));
                 if (indirectBlock == -1) {
                     indirectBlock = (short)superblock.getFreeBlock();
                     if (indirectBlock == -1) {
@@ -264,16 +265,18 @@ public class FileSystem
                 while (toWrite > 0) {
                     if ((fileTableEnt.seekPtr - Disk.blockSize * fileTableEnt.inode.direct.length)% indirectBlockSize != 0) {
                         // read the block data starting from seek pointer
+//                        chunksize = Math.min(toWrite, (fileTableEnt.seekPtr / indirectBlockSize + 1) * indirectBlockSize - fileTableEnt.seekPtr);
                         chunksize = Math.min(toWrite, (fileTableEnt.seekPtr / indirectBlockSize + 1) * indirectBlockSize - fileTableEnt.seekPtr);
-                        blockOffset = fileTableEnt.seekPtr % indirectBlockSize;
+                        chunksize = Math.min(chunksize, indirectBlockSize - (fileTableEnt.seekPtr - Disk.blockSize * fileTableEnt.inode.direct.length)% indirectBlockSize);
+                        blockOffset = (fileTableEnt.seekPtr - Disk.blockSize * fileTableEnt.inode.direct.length) % indirectBlockSize + 2;
                     } else {
                         chunksize = Math.min(toWrite, indirectBlockSize);
                         blockOffset = 2;
                     }
                     // find the block number of next indirect block
-                    byte[] existingBlock = new byte[Disk.blockSize];
-                    SysLib.rawread(indirectBlock, existingBlock);
-                    nextIndirectBlock = SysLib.bytes2short(existingBlock, 0);
+//                    byte[] existingBlock = new byte[Disk.blockSize];
+                    SysLib.rawread(indirectBlock, blockData);
+                    nextIndirectBlock = SysLib.bytes2short(blockData, 0);
                     if (nextIndirectBlock <= 0) {
                         nextIndirectBlock = (short) superblock.getFreeBlock();
                         if (nextIndirectBlock == -1) {
@@ -317,7 +320,7 @@ public class FileSystem
 
 
 //            fileTableEnt.inode.length = buffer.length; // this may or may not be correct if new contents is smaller than old contents
-            fileTableEnt.inode.length = fileTableEnt.seekPtr; // this may or may not be correct if new contents is smaller than old contents
+            fileTableEnt.inode.length = Math.max(fileTableEnt.inode.length, fileTableEnt.seekPtr); // this may or may not be correct if new contents is smaller than old contents
         }
         //fileTableEnt.inode.count++;
         fileTableEnt.inode.flag = 1;
