@@ -521,9 +521,26 @@ public class FileSystem
 	 */
 	public Boolean deallocAllBlocks(FileTableEntry ftEntry) {
 
+        if (ftEntry.inode.count != 1) {
+            return false;
+        }
+        byte[] tempData = freeIndirectBlocks(ftEntry);
+        for (short position = 0; position < ftEntry.inode.direct.length; position++) {
+            if (ftEntry.inode.direct[(short) position] != -1) {
+                superblock.returnBlock(ftEntry.inode.direct[(short) position]);
+                ftEntry.inode.direct[(short) position] = -1;
+            }
+        }
+        if (tempData != null) {
+            short block;
+            while ((block = SysLib.bytes2short(tempData, 0)) != -1) {
+                superblock.returnBlock((short) block);
+            }
+        }
+        ftEntry.inode.toDisk((short) ftEntry.iNumber);
+        return true;
 
 
-		return false;
 	}
 
 	/*
