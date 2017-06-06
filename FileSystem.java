@@ -500,7 +500,7 @@ public class FileSystem
 	    short currentBlock = blockId;
 	    short nextBlock;
 
-        while (currentBlock != -1)
+        while (currentBlock > 0)
         {
             SysLib.rawread(blockId,blockData);
             nextBlock = SysLib.bytes2short(blockData, 0);
